@@ -45,6 +45,7 @@ site/
 *.db
 config/mcp_client.json
 config/mcp_client.sample.json
+config/mc_S3.json
 demo_output*.txt
 bedrock_sql.txt
 mcp_list_output.txt
