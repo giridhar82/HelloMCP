@@ -1,0 +1,161 @@
+1. What each architecture component does
+Client side
+
+1. User Natural Language Request
+
+The human just types:
+
+“Get top 10 customers by revenue from last year and export as CSV”
+
+No SQL, no file paths – just intent.
+
+2. MCP Client (VS Code Extension / ChatGPT / Claude Desktop etc.)
+
+This is the “host” that knows how to talk MCP.
+
+It:
+
+Sends the user message + tool metadata to the model.
+
+When the model decides to use your MCP server, it sends a call_tool request to your server and displays the tool output.
+
+MCP Server (Data Steward)
+
+Think of this as a mini backend that exposes tools.
+
+3. MCP Transport Layer (JSON-RPC / stdio / WebSockets / Streamable HTTP)
+
+The plumbing: how messages move between client and server.
+
+Options:
+
+stdio: good for local tools (Claude Desktop, some IDEs).
+
+HTTP / streamable-http: good for remote / containerized deployment.
+
+It carries:
+
+list_tools, call_tool, list_resources etc.
+
+4. AI Intent Classifier / Router
+
+Optional but powerful middle layer.
+
+It looks at the user request and:
+
+Decides whether you need DB tools, File tools, or both.
+
+Could do light parsing (e.g., detect “read-only vs write query”).
+
+In practice:
+
+Often implemented inside the LLM prompt itself.
+
+You may also add a lightweight rule engine (e.g., “if request contains DROP/DELETE → force approval flow”).
+
+5. DB Tool
+
+A set of MCP tools that wrap database operations, for example:
+
+list_databases
+
+list_tables(schema)
+
+get_table_schema(table)
+
+run_sql(query, read_only=true)
+
+Each tool:
+
+Has a JSON-schema input and output.
+
+Is what the model actually calls.
+
+6. Database Connector
+
+Low-level component that actually talks to DBs.
+
+Hides driver details from DB tools:
+
+Manages connection (or pool).
+
+Normalizes results (columns, rows) to a standard format.
+
+Can support multiple backends (Postgres / MySQL / Oracle) via config.
+
+This is your reusable piece across tools and future services.
+
+7. Safety Engine (SQL Risk Checker + File Policies)
+
+Guardrail layer:
+
+Static checks: detect dangerous SQL (DROP *, TRUNCATE, UPDATE without WHERE, etc.).
+
+Tenant policies: which schemas/tables are allowed.
+
+File access policies: which directories/buckets are allowed.
+
+Returns:
+
+allowed, blocked, or needs_approval with a reason.
+
+8. File System Layer (Local / Remote / S3)
+
+Uniform abstraction to interact with files:
+
+read_file(path)
+
+write_file(path, content)
+
+list_dir(path)
+
+Can have implementations for:
+
+Local file system (project workspace).
+
+Network shares.
+
+Object storage like S3 / Azure Blob.
+
+
+Response Aggregation
+
+9. Response Aggregator
+
+Takes outputs from:
+
+DB tools (query results, schema descriptions).
+
+File tools (file paths, snippets).
+
+Produces:
+
+Model-friendly summaries.
+
+Possibly multi-step flows (e.g., “query DB → write CSV → return download path”).
+
+You might have:
+
+A common response format (success, metadata, preview, full payload).
+
+*******************************************************************************
+Cost Considerations :
+
+Model choice matters a lot: different foundation models (and providers) have different rates. 
+DEV Community
++1
+
+Token count: if prompts are long (e.g., retrieval‐augmented generation with large context) your input tokens go up.
+
+Output length: if you ask for long responses, the output token count increases.
+
+Batch vs On‐demand: If your use case can tolerate latency, batch mode may reduce cost significantly.
+
+Custom/fine‐tuned models: More expensive, often you’ll need provisioned capacity. 
+nOps
+
+Region & data‐transfer: Some hidden overheads (though primary cost is tokens) and cross-region can affect.
+
+Guardrails/Knowledge‐base tools: If you use those extra features (retrieval, rerank, guardrails) they add cost.
+
+“Smart Data. Safe Access. Superior Quality. Faster Delivery. Lower Cost.”
