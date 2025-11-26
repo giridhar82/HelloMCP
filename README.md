@@ -92,6 +92,62 @@ py -3.12 src\ai\bedrock_agent.py --transport http --url http://127.0.0.1:8000/mc
 
 
 
+## S3 MCP Server
+- Configure client at `config/mc_S3.json`:
+  ```json
+  {
+    "transport": "streamable-http",
+    "url": "http://127.0.0.1:8002/mcp",
+    "server": "src.s3.server",
+    "bucket": "",
+    "prefix": "",
+    "key": "",
+    "max_bytes": null,
+    "decode_text": true
+  }
+  ```
+- Start server on port 8002:
+  - `$env:MCP_TRANSPORT="streamable-http"; $env:MCP_HTTP_PORT=8002; py -3.12 -m src.s3.server`
+- Test with client:
+  - `$env:MCP_CLIENT_CONFIG="config/mc_S3.json"; py -3.12 -m src.client.s3_client`
+- Tools:
+  - `s3_list_buckets` lists buckets
+  - `s3_list_objects` lists objects in a bucket (use `bucket`/`prefix`)
+  - `s3_read_object` reads object content (use `bucket`/`key`)
+- Notes:
+  - AWS credentials must be available (env or default profile)
+  - `s3_list_buckets` requires `s3:ListAllMyBuckets` permission; set `bucket` and use `s3_list_objects` otherwise
+  - Optional `AWS_REGION` and `AWS_S3_ENDPOINT` are supported by the server
+  - Server code: `src/s3/server.py:38–108`, run: `src/s3/server.py:112–116`
+
+## LocalFS MCP Server
+- Configure client at `config/localfile_mcp.json`:
+  ```json
+  {
+    "transport": "streamable-http",
+    "url": "http://127.0.0.1:8003/mcp",
+    "server": "src.localfs.server",
+    "path": ".",
+    "types": ["py", "txt"],
+    "ignore": [".venv/**", "__pycache__/**", "node_modules/**"],
+    "read": "README.md",
+    "max_depth": 5,
+    "max_items": 200
+  }
+  ```
+- Start server on port 8003:
+  - `$env:MCP_TRANSPORT="streamable-http"; $env:MCP_HTTP_PORT=8003; py -3.12 -m src.localfs.server`
+- Test with client:
+  - `$env:MCP_CLIENT_CONFIG="config/localfile_mcp.json"; py -3.12 -m src.client.localfs_client`
+- Tools:
+  - `localfs_list` lists files under `path` with optional `types` and `ignore`
+-  - `localfs_read` reads a file relative to `path`
+- Notes:
+  - `ignore` uses glob patterns relative to `path`
+  - `types` are extensions without dots (e.g., `"py"`)
+  - Path containment is enforced (cannot read outside base)
+  - Server code: `src/localfs/server.py:33–104`, run: `src/localfs/server.py:108–114`
+
 ## Troubleshooting
 - 406 Not Acceptable when calling `/mcp` directly:
   - Use the client or agent tool‑mode, which performs the MCP handshake.
